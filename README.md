@@ -1,6 +1,6 @@
-# WHEATERBOX
+# TEMPBOX
 
-ESP32-C3 weather station with AHT20 (temperature/humidity) and BMP280 (pressure) sensors, featuring a live data web app built with React and Capacitor.
+ESP32-C3 temperature station with AHT20 (temperature/humidity) and BMP280 (pressure) sensors, featuring a live data web app built with React and Capacitor.
 
 ## Project Structure
 
