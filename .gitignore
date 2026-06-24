@@ -1,0 +1,22 @@
+# Credentials
+firmware/config.h
+
+# Node
+node_modules/
+
+# Build output
+dist/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Capacitor
+ios/
+*.local.*
