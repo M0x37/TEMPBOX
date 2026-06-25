@@ -4,7 +4,8 @@
 #include <Adafruit_AHTX0.h>
 #include <Adafruit_BMP280.h>
 
-#include "config.h"
+const char* ssid = "FRITZ!Box 6490 Cable";
+const char* password = "31741128969952935150";
 
 IPAddress localIP(192, 168, 178, 100);
 IPAddress gateway(192, 168, 178, 1);
