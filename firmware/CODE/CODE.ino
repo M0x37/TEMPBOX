@@ -3,6 +3,8 @@
 #include <Wire.h>
 #include <Adafruit_AHTX0.h>
 #include <Adafruit_BMP280.h>
+#include "esp_sleep.h"
+#include "esp_task_wdt.h"
 
 const char* ssid = "FRITZ!Box 6490 Cable";
 const char* password = "31741128969952935150";
@@ -20,11 +22,8 @@ WiFiServer server(80);
 const int wakeInterval = 30; // min
 
 void ledsOff() {
-  int pins[] = {2, 7, 12};
-  for (int i = 0; i < 3; i++) {
-    pinMode(pins[i], OUTPUT);
-    digitalWrite(pins[i], LOW);
-  }
+  pinMode(2, OUTPUT);
+  digitalWrite(2, LOW);
 }
 
 String readSensorData() {
@@ -104,9 +103,11 @@ void setup() {
   }
 
   Serial.printf("Deep Sleep %d min...\n", wakeInterval);
-  WiFi.disconnect(true);
-  delay(10);
-  ESP.deepSleep((uint64_t)wakeInterval * 60 * 1000000ULL);
+  WiFi.disconnect();
+  esp_task_wdt_deinit();
+  delay(100);
+  esp_sleep_enable_timer_wakeup((uint64_t)wakeInterval * 60 * 1000000ULL);
+  esp_deep_sleep_start();
 }
 
 void loop() {}
