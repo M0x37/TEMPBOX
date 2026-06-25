@@ -7,7 +7,7 @@
 const char* ssid = "FRITZ!Box 6490 Cable";
 const char* password = "31741128969952935150";
 
-IPAddress localIP(192, 168, 178, 133);
+IPAddress localIP(192, 168, 178, 100);
 IPAddress gateway(192, 168, 178, 1);
 IPAddress subnet(255, 255, 255, 0);
 IPAddress dns(192, 168, 178, 1);

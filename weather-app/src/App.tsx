@@ -34,7 +34,7 @@ function saveEntry(entry: TempEntry) {
 }
 
 function loadUrl(): string {
-  return localStorage.getItem(URL_KEY) || 'http://192.168.178.133/'
+  return localStorage.getItem(URL_KEY) || 'http://192.168.178.100/'
 }
 
 function App() {
