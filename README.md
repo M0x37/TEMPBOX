@@ -82,7 +82,7 @@ WebSocket is also supported at `ws://192.168.178.100/` for real-time updates (br
 - **BMP280** barometric pressure sensor (I2C address: 0x77)
 - I2C: SDA → GPIO8, SCL → GPIO9
 
-See [docs/wiring.md](docs/wiring.md) for detailed wiring instructions.
+See [docs/wiring.md](docs/wiring.md) for wiring and [docs/power.md](docs/power.md) for power consumption details.
 
 ## License
 
