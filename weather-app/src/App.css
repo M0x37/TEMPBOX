@@ -75,3 +75,75 @@
   color: #555;
   font-size: 16px;
 }
+
+.btn {
+  background: none;
+  border: 1px solid #444;
+  color: #aaa;
+  padding: 8px 20px;
+  border-radius: 6px;
+  font-size: 12px;
+  letter-spacing: 1px;
+  cursor: pointer;
+  text-transform: uppercase;
+}
+
+.btn:active {
+  background: #222;
+}
+
+.history-btn {
+  margin-top: 24px;
+}
+
+.history-view {
+  justify-content: flex-start;
+  padding-top: 16px;
+}
+
+.history-header {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.history-title {
+  font-size: 14px;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.history-list {
+  width: 100%;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #1a1a1a;
+}
+
+.history-temp {
+  font-size: 18px;
+  font-weight: 300;
+  color: #fff;
+}
+
+.history-time {
+  font-size: 14px;
+  color: #666;
+  font-variant-numeric: tabular-nums;
+}
+
+.history-empty {
+  color: #555;
+  font-size: 14px;
+  text-align: center;
+  margin-top: 40px;
+}
