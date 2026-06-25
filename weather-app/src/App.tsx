@@ -78,9 +78,7 @@ function App() {
           )}
         </>
       ) : (
-        <div className="waiting">
-          {status === 'connecting' ? 'connecting...' : 'ESP32 not found'}
-        </div>
+        <div className="waiting">connecting...</div>
       )}
     </div>
   )
