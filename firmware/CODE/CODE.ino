@@ -18,12 +18,12 @@ Adafruit_BMP280 bmp;
 WiFiServer server(80);
 unsigned long lastWifiCheck = 0;
 
-const int blueLed = 12;
+const int blueLed = 3;
 unsigned long lastBlink = 0;
 bool ledOn = false;
 
 void blinkLed() {
-  if (millis() - lastBlink > 10000 && !ledOn) {
+  if (millis() - lastBlink > 3000 && !ledOn) {
     digitalWrite(blueLed, HIGH);
     ledOn = true;
     lastBlink = millis();
@@ -96,6 +96,7 @@ void handleClient(WiFiClient& client) {
 void setup() {
   Serial.begin(115200);
   pinsInit();
+  blinkLed();
 
   Wire.begin(8, 9);
 
@@ -112,6 +113,7 @@ void setup() {
 
   int retries = 0;
   while (WiFi.status() != WL_CONNECTED && retries < 50) {
+    blinkLed();
     delay(200);
     Serial.print(".");
     retries++;
