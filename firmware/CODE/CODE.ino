@@ -1,11 +1,14 @@
-#include <WiFi.h>
 #include <ArduinoJson.h>
+#include <WiFi.h>
+#include <WebServer.h>
 #include <Wire.h>
 #include <Adafruit_AHTX0.h>
 #include <Adafruit_BMP280.h>
 
-const char* ssid = "FRITZ!Box 6490 Cable";
-const char* password = "31741128969952935150";
+// TEMPBOX configuration: keep all settings in this one sketch file.
+const char* WIFI_SSID = "FRITZ!Box 6490 Cable";
+const char* WIFI_PASSWORD = "31741128969952935150";
+const bool USE_STATIC_IP = true;
 
 IPAddress localIP(192, 168, 178, 100);
 IPAddress gateway(192, 168, 178, 1);
@@ -14,94 +17,78 @@ IPAddress dns(192, 168, 178, 1);
 
 Adafruit_AHTX0 aht;
 Adafruit_BMP280 bmp;
+WebServer server(80);
 
-WiFiServer server(80);
 unsigned long lastWifiCheck = 0;
-unsigned long lastPowerPulse = 0;
+bool ahtReady = false;
+bool bmpReady = false;
 
-void pinsInit() {
-  pinMode(2, OUTPUT);
-  digitalWrite(2, LOW);
+void sendCorsHeaders() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "Content-Type");
+  server.sendHeader("Cache-Control", "no-cache, no-store, must-revalidate");
 }
 
-void powerPulse() {
-  if (millis() - lastPowerPulse > 5000) {
-    lastPowerPulse = millis();
-    WiFi.scanNetworks(true);
+bool readSensorData(String& output) {
+  if (!ahtReady || !bmpReady) return false;
+
+  sensors_event_t humidity, temperature;
+  aht.getEvent(&humidity, &temperature);
+  const float pressure = bmp.readPressure() / 100.0F;
+
+  if (isnan(temperature.temperature) || isnan(humidity.relative_humidity) || isnan(pressure)) {
+    return false;
   }
 
-  int n = WiFi.scanComplete();
-  if (n >= 0) {
-    WiFi.scanDelete();
-  }
+  StaticJsonDocument<200> document;
+  document["temp"] = temperature.temperature;
+  document["humidity"] = humidity.relative_humidity;
+  document["pressure"] = pressure;
+
+  serializeJson(document, output);
+  return true;
 }
 
-String readSensorData() {
-  sensors_event_t humidity, temp;
-  aht.getEvent(&humidity, &temp);
-  float pressure = bmp.readPressure() / 100.0F;
+void handleRoot() {
+  String json;
+  sendCorsHeaders();
 
-  StaticJsonDocument<200> doc;
-  doc["temp"] = temp.temperature;
-  doc["humidity"] = humidity.relative_humidity;
-  doc["pressure"] = pressure;
-
-  char buffer[256];
-  serializeJson(doc, buffer);
-  return String(buffer);
-}
-
-void handleClient(WiFiClient& client) {
-  String buffer;
-  unsigned long start = millis();
-  while (client.available() == 0) {
-    if (millis() - start > 2000) {
-      client.stop();
-      return;
-    }
-    delay(1);
-  }
-  while (client.available()) {
-    char ch = client.read();
-    buffer += ch;
-    if (buffer.endsWith("\r\n\r\n")) break;
-  }
-
-  if (buffer.indexOf("GET /") == -1) {
-    client.stop();
+  if (!readSensorData(json)) {
+    server.send(503, "application/json", "{\"error\":\"sensor unavailable\"}");
     return;
   }
 
-  String json = readSensorData();
-  String response = "HTTP/1.1 200 OK\r\n"
-    "Content-Type: application/json\r\n"
-    "Access-Control-Allow-Origin: *\r\n"
-    "Access-Control-Allow-Methods: GET, OPTIONS\r\n"
-    "Access-Control-Allow-Headers: *\r\n"
-    "Cache-Control: no-cache, no-store, must-revalidate\r\n"
-    "Pragma: no-cache\r\n"
-    "Expires: 0\r\n"
-    "Connection: close\r\n"
-    "Content-Length: " + String(json.length()) + "\r\n"
-    "\r\n" + json;
-  client.print(response);
-  client.stop();
+  server.send(200, "application/json", json);
+}
+
+void handleHealth() {
+  sendCorsHeaders();
+  const bool healthy = ahtReady && bmpReady && WiFi.status() == WL_CONNECTED;
+  server.send(
+    healthy ? 200 : 503,
+    "application/json",
+    healthy ? "{\"status\":\"ok\"}" : "{\"status\":\"unavailable\"}"
+  );
+}
+
+void handleOptions() {
+  sendCorsHeaders();
+  server.send(204, "text/plain", "");
 }
 
 void setup() {
   Serial.begin(115200);
-  pinsInit();
-
   Wire.begin(8, 9);
 
-  if (!aht.begin()) Serial.println("AHT20 Fehler");
-  if (!bmp.begin(0x77)) Serial.println("BMP280 Fehler");
-
-  setCpuFrequencyMhz(80);
+  ahtReady = aht.begin();
+  bmpReady = bmp.begin(0x77);
+  if (!ahtReady) Serial.println("AHT20 Fehler");
+  if (!bmpReady) Serial.println("BMP280 Fehler");
 
   WiFi.setHostname("tempbox");
-  WiFi.config(localIP, gateway, subnet, dns);
-  WiFi.begin(ssid, password);
+  if (USE_STATIC_IP) WiFi.config(localIP, gateway, subnet, dns);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
   WiFi.setAutoReconnect(true);
   WiFi.setSleep(false);
 
@@ -112,33 +99,28 @@ void setup() {
     retries++;
   }
   Serial.println();
-  if (WiFi.status() == WL_CONNECTED) {
-    Serial.print("ESP32 IP: ");
-    Serial.println(WiFi.localIP());
-  } else {
-    Serial.println("WiFi fehlgeschlagen – versuche im Loop");
-  }
+  Serial.print("ESP32 IP: ");
+  Serial.println(WiFi.localIP());
 
+  server.on("/", HTTP_GET, handleRoot);
+  server.on("/", HTTP_OPTIONS, handleOptions);
+  server.on("/health", HTTP_GET, handleHealth);
+  server.on("/health", HTTP_OPTIONS, handleOptions);
+  server.onNotFound([]() {
+    sendCorsHeaders();
+    server.send(404, "application/json", "{\"error\":\"not found\"}");
+  });
   server.begin();
-  Serial.println("Server auf Port 80");
+  Serial.println("HTTP Server auf Port 80 gestartet");
 }
 
 void loop() {
-  powerPulse();
-
-  if (WiFi.status() != WL_CONNECTED) {
-    if (millis() - lastWifiCheck > 1000) {
-      lastWifiCheck = millis();
-      WiFi.reconnect();
-    }
-    delay(10);
-    return;
+  if (WiFi.status() != WL_CONNECTED && millis() - lastWifiCheck > 1'000) {
+    lastWifiCheck = millis();
+    WiFi.reconnect();
   }
 
-  WiFiClient client = server.available();
-  if (client) {
-    handleClient(client);
-  }
-
-  delay(10);
+  // No periodic WiFi scan here: scans can interrupt the active HTTP connection.
+  server.handleClient();
+  delay(2);
 }

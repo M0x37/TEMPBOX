@@ -1,11 +1,19 @@
 # Credentials
 firmware/config.h
+firmware/CODE/config.h
 
 # Node
 node_modules/
 
 # Build output
 dist/
+tempbox-mobile/gradle-build.log
+tempbox-mobile/.expo/
+tempbox-mobile/android/.gradle/
+tempbox-mobile/android/.cxx/
+tempbox-mobile/android/build/
+tempbox-mobile/android/app/build/
+tempbox-mobile/android/local.properties
 
 # IDE
 .idea/

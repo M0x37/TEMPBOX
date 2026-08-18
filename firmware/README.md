@@ -10,23 +10,24 @@ ESP32-C3 firmware for the TEMPBOX temperature station.
    - Adafruit AHTX0
    - Adafruit BMP280 Library
    - Adafruit Unified Sensor
-3. Copy `config.example.h` to `config.h` and set your WiFi credentials.
-4. Open `CODE.ino` and upload to the ESP32-C3.
+3. Open `CODE/CODE.ino` and edit the `WIFI_SSID` and `WIFI_PASSWORD` values at the top when needed.
+4. Upload this single file to the ESP32-C3. No `config.h` file is required.
 
-## Power Saving (Deep Sleep)
+> Important: Upload the revised sketch after this update. The new `WebServer` implementation replaces the hand-written socket handling and avoids periodic WiFi scans that can close an active browser request without a response.
 
-The ESP32 wakes every **30 minutes**, serves HTTP requests for ~10 seconds, then enters deep sleep. During sleep, consumption drops to ~5 µA (LEDs off, WiFi disconnected).
+## Connection Handling
 
-With a 2000 mAh battery: ~240 days runtime.
+The firmware keeps the WiFi connection active so that the Expo app can request live data. It reconnects to WiFi when necessary but does not perform periodic network scans while handling browser requests.
 
 ## API
 
-The server listens on port 80 while awake:
+The server listens on port 80:
 
 | Method | Path | Description |
 |--------|------|-------------|
 | `GET /` | HTTP | Returns `{"temp": 23.5, "humidity": 45.2, "pressure": 1013.2}` |
+| `GET /health` | HTTP | Returns a compact sensor status response for connection checks. |
 
 CORS is enabled (`Access-Control-Allow-Origin: *`) for cross-origin requests.
 
-The app will show "ESP32 not found" during sleep – data updates every 30 minutes.
+The Expo app reads the root endpoint every five seconds by default and retains a simple live view plus a local measurement history.

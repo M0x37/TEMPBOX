@@ -1,0 +1,28 @@
+# TEMPBOX Expo – TODO
+
+- [x] Bestehende Capacitor-App und ESP32-Datenlogik analysieren
+- [x] Mobile Designplanung für das Linear-inspirierte Expo-UI dokumentieren
+- [x] Bereitgestellten Linear-Design-Guide als Farb-, Typografie- und Komponentenbasis anwenden
+- [x] Expo-Projektstruktur im lokalen Repository einrichten
+- [x] ESP32-Verbindungsadresse lokal speicherbar machen
+- [x] Sensorwerte von ESP32 per HTTP abrufen und automatisch aktualisieren
+- [x] ESP32-Firmware bei Bedarf für die Expo-App prüfen und kompatibel erweitern
+- [x] Übersicht, Geräteseite und Einstellungen als mobile Bildschirme umsetzen
+- [x] Lineares Designsystem, Barrierefreiheit und Interaktionsfeedback implementieren
+- [x] App-Icon und Expo-Konfiguration für TEMPBOX aktualisieren
+- [x] Typprüfung, Linting und Android-Build-Konfiguration validieren
+- [x] Lokale Start- und APK-Build-Anleitung dokumentieren
+- [x] Expo-Web-Version lokal auf dem Windows-PC starten und Erreichbarkeit prüfen
+- [x] Expo-Oberfläche auf die einfache alte Live-Ansicht und den Verlauf reduzieren
+- [x] ESP32-Serverfehler ERR_EMPTY_RESPONSE bei der Live-Abfrage beheben
+- [x] Wiederholte Browser-Anfragen gegen den ESP32 auf leere Antworten prüfen und absichern
+- [x] ESP32-Firmware auf eine einzelne CODE.ino-Datei ohne config.h-Abhängigkeit umstellen
+- [x] CORS-Preflight durch den Cache-Control-Anfrageheader in der Web-App beheben
+- [x] Android-APK lokal mit der Expo-Toolchain bauen
+- [x] Eigenständig startbare Android-Release-APK mit eingebettetem Bundle bauen
+- [x] Android-APK für lokale ESP32-HTTP-Verbindungen freigeben
+- [x] Zurück-Button auf der Verlaufseite weiter unten positionieren
+- [x] Korrigierte Android-Release-APK lokal bauen
+- [x] Minimalistisches TEMPBOX-App-Icon erstellen und in die Android-Assets integrieren
+- [x] App-Anzeige und Android-Branding auf TEMPBOX vereinheitlichen
+- [ ] Vollständigen aktuellen TEMPBOX-Code committen und zu GitHub pushen

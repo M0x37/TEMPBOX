@@ -1,17 +1,17 @@
 # TEMPBOX
 
-ESP32-C3 temperature station with AHT20 (temperature/humidity) and BMP280 (pressure) sensors, featuring a live data web app built with React and Capacitor.
+ESP32-C3 temperature station with AHT20 (temperature/humidity) and BMP280 (pressure) sensors, featuring a live-data mobile app built with Expo and React Native.
 
 ## Project Structure
 
 ```
 ├── firmware/          ESP32-C3 Arduino firmware
-│   ├── CODE/CODE.ino  Main sketch (HTTP JSON API)
-│   ├── config.example.h   WiFi credentials template
-│   └── config.h       Your local WiFi config (gitignored)
-├── app/               React + Capacitor mobile app
-│   ├── src/           React source code
-│   └── android/       Android native project (generated)
+│   └── CODE/CODE.ino      Main sketch with local WLAN configuration
+├── tempbox-mobile/    Expo + React Native mobile app
+│   ├── App.tsx        TEMPBOX interface
+│   ├── src/           ESP32 client and local storage
+│   └── eas.json       Android APK build profile
+├── app/               Previous React + Capacitor implementation (legacy)
 ├── docs/
 │   ├── wiring.md      Sensor wiring instructions
 │   ├── power.md       Power consumption calculations
@@ -23,8 +23,8 @@ ESP32-C3 temperature station with AHT20 (temperature/humidity) and BMP280 (press
 
 ### 1. Flash the ESP32
 
-1. Copy `firmware/config.example.h` to `firmware/config.h` and set your WiFi credentials.
-2. Open `firmware/CODE/CODE.ino` in the Arduino IDE (with ESP32 board support installed).
+1. Open `firmware/CODE/CODE.ino` in the Arduino IDE (with ESP32 board support installed).
+2. Set `WIFI_SSID` and `WIFI_PASSWORD` at the top of the sketch if necessary.
 3. Select board: **ESP32-C3 Dev Module**.
 4. Install required libraries:
    - ArduinoJson
@@ -32,27 +32,25 @@ ESP32-C3 temperature station with AHT20 (temperature/humidity) and BMP280 (press
    - Adafruit BMP280
 5. Flash to the ESP32-C3 Supermini.
 
-### 2. Run the Web App (development)
+### 2. Run the Expo App (development)
 
 ```bash
-cd app
-npm install
-npm run dev
+cd tempbox-mobile
+npm start
 ```
 
-Open http://localhost:5173 in your browser.
+Scanne den QR-Code anschließend mit Expo Go. Smartphone und ESP32 müssen im selben WLAN sein.
 
 ### 3. Build Android APK
 
 ```bash
-cd app
-npm run build
-npx cap sync android
-cd android
-./gradlew assembleDebug
+npm install --global eas-cli
+cd tempbox-mobile
+eas login
+eas build --platform android --profile preview
 ```
 
-The APK will be at `android/app/build/outputs/apk/debug/app-debug.apk`.
+Das `preview`-Profil erzeugt eine installierbare Android-APK. Für einen lokalen Debug-Build mit Android Studio kann `npx expo run:android` verwendet werden.
 
 ## API
 
