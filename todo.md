@@ -25,4 +25,4 @@
 - [x] Korrigierte Android-Release-APK lokal bauen
 - [x] Minimalistisches TEMPBOX-App-Icon erstellen und in die Android-Assets integrieren
 - [x] App-Anzeige und Android-Branding auf TEMPBOX vereinheitlichen
-- [ ] Vollständigen aktuellen TEMPBOX-Code committen und zu GitHub pushen
+- [x] Vollständigen aktuellen TEMPBOX-Code committen und zu GitHub pushen
