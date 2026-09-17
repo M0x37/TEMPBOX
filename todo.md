@@ -26,3 +26,4 @@
 - [x] Minimalistisches TEMPBOX-App-Icon erstellen und in die Android-Assets integrieren
 - [x] App-Anzeige und Android-Branding auf TEMPBOX vereinheitlichen
 - [x] Vollständigen aktuellen TEMPBOX-Code committen und zu GitHub pushen
+- [x] Aktuelle Tempbox-Release-APK erneut bauen und als Download bereitstellen

@@ -25,14 +25,31 @@ ESP32-C3 temperature station with AHT20 (temperature/humidity) and BMP280 (press
 
 1. Open `firmware/CODE/CODE.ino` in the Arduino IDE (with ESP32 board support installed).
 2. Set `WIFI_SSID` and `WIFI_PASSWORD` at the top of the sketch if necessary.
-3. Select board: **ESP32-C3 Dev Module**.
-4. Install required libraries:
+3. Set the MQTT settings for Home Assistant if you want automatic entity discovery in HA.
+4. Select board: **ESP32-C3 Dev Module**.
+5. Install required libraries:
    - ArduinoJson
+   - PubSubClient
    - Adafruit AHTX0
    - Adafruit BMP280
-5. Flash to the ESP32-C3 Supermini.
+6. Flash to the ESP32-C3 Supermini.
 
-### 2. Run the Expo App (development)
+### 2. Home Assistant integration
+
+The ESP32 can publish sensor values to Home Assistant via MQTT discovery. Once the broker is reachable, Home Assistant will auto-create the entities for temperature, humidity and pressure. This does not replace the existing HTTP endpoint used by the mobile app.
+
+Example MQTT settings:
+
+```cpp
+const char* MQTT_BROKER = "192.168.178.20";
+const uint16_t MQTT_PORT = 1883;
+const char* MQTT_USERNAME = "";
+const char* MQTT_PASSWORD = "";
+```
+
+Then restart the ESP32 and check whether Home Assistant discovers the entities under the MQTT integration.
+
+### 3. Run the Expo App (development)
 
 ```bash
 cd tempbox-mobile
@@ -41,7 +58,7 @@ npm start
 
 Scanne den QR-Code anschließend mit Expo Go. Smartphone und ESP32 müssen im selben WLAN sein.
 
-### 3. Build Android APK
+### 4. Build Android APK
 
 ```bash
 npm install --global eas-cli
