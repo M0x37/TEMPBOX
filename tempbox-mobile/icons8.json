@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "icons": {
+    "pack": "m_outlined",
+    "sizes": [20, 22, 24, 30],
+    "color": "currentColor",
+    "items": {
+      "thermometer": { "id": "101188", "commonName": "thermometer" },
+      "humidity": { "id": "psdglEpjs3km", "commonName": "humidity" },
+      "pressure": { "id": "101180", "commonName": "pressure" },
+      "settings": { "id": "82535", "commonName": "settings" },
+      "history": { "id": "115230", "commonName": "activity-history" },
+      "trash": { "id": "85081", "commonName": "trash" },
+      "back": { "id": "84994", "commonName": "back" }
+    }
+  },
+  "illustrations": {
+    "style": "",
+    "slots": {}
+  },
+  "tokens": {
+    "iconColor": "--foreground",
+    "accent": "--accent",
+    "radius": "--radius"
+  }
+}

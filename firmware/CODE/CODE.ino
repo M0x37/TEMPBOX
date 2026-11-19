@@ -6,24 +6,24 @@
 #include <PubSubClient.h>
 #include <Adafruit_AHTX0.h>
 #include <Adafruit_BMP280.h>
+#include "config.h"
 
-// TEMPBOX configuration: keep all settings in this one sketch file.
-const char* WIFI_SSID = "FRITZ!Box 6490 Cable";
-const char* WIFI_PASSWORD = "31741128969952935150";
-const bool USE_STATIC_IP = true;
+const char* WIFI_SSID = TEMPBOX_WIFI_SSID;
+const char* WIFI_PASSWORD = TEMPBOX_WIFI_PASSWORD;
+const bool USE_STATIC_IP = TEMPBOX_USE_STATIC_IP;
 
-const char* MQTT_BROKER = "192.168.178.21";
-const uint16_t MQTT_PORT = 1883;
-const char* MQTT_USERNAME = "mqtt";
-const char* MQTT_PASSWORD = "KW9z8OoCcoxBMzK";
-const char* MQTT_CLIENT_ID = "tempbox_esp32";
-const char* HA_DISCOVERY_PREFIX = "homeassistant";
-const unsigned long MQTT_PUBLISH_INTERVAL = 2 * 60'000;
+const char* MQTT_BROKER = TEMPBOX_MQTT_BROKER;
+const uint16_t MQTT_PORT = TEMPBOX_MQTT_PORT;
+const char* MQTT_USERNAME = TEMPBOX_MQTT_USERNAME;
+const char* MQTT_PASSWORD = TEMPBOX_MQTT_PASSWORD;
+const char* MQTT_CLIENT_ID = TEMPBOX_MQTT_CLIENT_ID;
+const char* HA_DISCOVERY_PREFIX = TEMPBOX_HA_DISCOVERY_PREFIX;
+const unsigned long MQTT_PUBLISH_INTERVAL = TEMPBOX_MQTT_PUBLISH_INTERVAL;
 
-IPAddress localIP(192, 168, 178, 100);
-IPAddress gateway(192, 168, 178, 1);
-IPAddress subnet(255, 255, 255, 0);
-IPAddress dns(192, 168, 178, 1);
+IPAddress localIP(TEMPBOX_IP_ADDRESS);
+IPAddress gateway(TEMPBOX_GATEWAY);
+IPAddress subnet(TEMPBOX_SUBNET);
+IPAddress dns(TEMPBOX_DNS);
 
 Adafruit_AHTX0 aht;
 Adafruit_BMP280 bmp;
@@ -42,6 +42,13 @@ float currentPressure = 0.0f;
 
 bool hasMqttCredentials() {
   return strlen(MQTT_USERNAME) > 0 || strlen(MQTT_PASSWORD) > 0;
+}
+
+bool intervalElapsed(unsigned long& lastRun, unsigned long interval) {
+  const unsigned long now = millis();
+  if ((unsigned long)(now - lastRun) < interval) return false;
+  lastRun = now;
+  return true;
 }
 
 void sendCorsHeaders() {
@@ -65,6 +72,12 @@ bool readSensorData(String& output, float& tempValue, float& humidityValue, floa
   tempValue = temperature.temperature;
   humidityValue = humidity.relative_humidity;
   pressureValue = pressure;
+
+  if (temperature.temperature < -40.0F || temperature.temperature > 85.0F ||
+      humidity.relative_humidity < 0.0F || humidity.relative_humidity > 100.0F ||
+      pressure < 300.0F || pressure > 1100.0F) {
+    return false;
+  }
 
   StaticJsonDocument<200> document;
   document["temp"] = tempValue;
@@ -174,9 +187,11 @@ bool connectMqtt() {
   }
 
   Serial.print("Connecting to MQTT broker...");
+  const char* willTopic = "tempbox/status";
+  const char* willPayload = "offline";
   bool connected = hasMqttCredentials()
-    ? mqttClient.connect(MQTT_CLIENT_ID, MQTT_USERNAME, MQTT_PASSWORD)
-    : mqttClient.connect(MQTT_CLIENT_ID);
+    ? mqttClient.connect(MQTT_CLIENT_ID, MQTT_USERNAME, MQTT_PASSWORD, willTopic, 1, true, willPayload)
+    : mqttClient.connect(MQTT_CLIENT_ID, willTopic, 1, true, willPayload);
 
   if (connected) {
     Serial.println(" connected");
@@ -260,8 +275,7 @@ void setup() {
 }
 
 void loop() {
-  if (WiFi.status() != WL_CONNECTED && millis() - lastWifiCheck > 1'000) {
-    lastWifiCheck = millis();
+  if (WiFi.status() != WL_CONNECTED && intervalElapsed(lastWifiCheck, 1'000)) {
     WiFi.reconnect();
   }
 
@@ -273,14 +287,13 @@ void loop() {
         connectMqtt();
       }
     } else {
-      if (millis() - lastMqttPublish > MQTT_PUBLISH_INTERVAL) {
+      if (intervalElapsed(lastMqttPublish, MQTT_PUBLISH_INTERVAL)) {
         String payload;
         if (readSensorData(payload)) {
           publishSensorState();
         } else {
           publishMqttAvailability("offline");
         }
-        lastMqttPublish = millis();
       }
       mqttClient.loop();
     }

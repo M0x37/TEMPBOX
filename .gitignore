@@ -7,7 +7,6 @@ node_modules/
 
 # Build output
 dist/
-tempbox-mobile/gradle-build.log
 tempbox-mobile/.expo/
 tempbox-mobile/android/.gradle/
 tempbox-mobile/android/.cxx/
@@ -17,7 +16,8 @@ tempbox-mobile/android/local.properties
 
 # IDE
 .idea/
-.vscode/
+.vscode/*
+!.vscode/c_cpp_properties.json
 *.swp
 *.swo
 
@@ -29,3 +29,4 @@ Thumbs.db
 ios/
 android/
 *.local.*
+firmware/CODE/config.h

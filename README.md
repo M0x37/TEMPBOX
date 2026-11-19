@@ -5,17 +5,18 @@ ESP32-C3 temperature station with AHT20 (temperature/humidity) and BMP280 (press
 ## Project Structure
 
 ```
-├── firmware/          ESP32-C3 Arduino firmware
-│   └── CODE/CODE.ino      Main sketch with local WLAN configuration
-├── tempbox-mobile/    Expo + React Native mobile app
-│   ├── App.tsx        TEMPBOX interface
-│   ├── src/           ESP32 client and local storage
-│   └── eas.json       Android APK build profile
-├── app/               Previous React + Capacitor implementation (legacy)
-├── docs/
-│   ├── wiring.md      Sensor wiring instructions
-│   ├── power.md       Power consumption calculations
-│   └── troubleshooting.md  Common issues & fixes
+TEMPBOX/
+├── firmware/
+│   ├── CODE/                 Aktuelle ESP32-C3-Sketch-Dateien
+│   ├── legacy/               Ältere Arduino-Sketches
+│   └── README.md             Firmware-Dokumentation
+├── tempbox-mobile/           Expo + React Native Android-App
+│   ├── App.tsx
+│   ├── src/                  API und lokaler Speicher
+│   └── scripts/              Android-Build-Skripte
+├── docs/                     Architektur, Design und Hardware-Dokumentation
+├── release/                  Fertige Android-APK
+├── .vscode/                  ESP32-IntelliSense-Konfiguration
 └── README.md
 ```
 
@@ -24,7 +25,7 @@ ESP32-C3 temperature station with AHT20 (temperature/humidity) and BMP280 (press
 ### 1. Flash the ESP32
 
 1. Open `firmware/CODE/CODE.ino` in the Arduino IDE (with ESP32 board support installed).
-2. Set `WIFI_SSID` and `WIFI_PASSWORD` at the top of the sketch if necessary.
+2. Copy `firmware/CODE/config.example.h` to `firmware/CODE/config.h` and set the local WiFi, static IP and optional MQTT values there. `config.h` is ignored by Git.
 3. Set the MQTT settings for Home Assistant if you want automatic entity discovery in HA.
 4. Select board: **ESP32-C3 Dev Module**.
 5. Install required libraries:
@@ -61,13 +62,11 @@ Scanne den QR-Code anschließend mit Expo Go. Smartphone und ESP32 müssen im se
 ### 4. Build Android APK
 
 ```bash
-npm install --global eas-cli
 cd tempbox-mobile
-eas login
-eas build --platform android --profile preview
+npm run apk:release
 ```
 
-Das `preview`-Profil erzeugt eine installierbare Android-APK. Für einen lokalen Debug-Build mit Android Studio kann `npx expo run:android` verwendet werden.
+Das Skript verwendet das lokale Android-SDK und legt die APK als `release/tempbox-release.apk` ab. Für einen lokalen Debug-Build mit Android Studio kann `npx expo run:android` verwendet werden.
 
 ## API
 

@@ -13,12 +13,10 @@ Scanne anschließend den QR-Code mit Expo Go. Das Smartphone und der ESP32 müss
 
 ## Android-APK
 
-Installiere einmalig die EAS-CLI und melde dich mit deinem Expo-Konto an. Anschließend erzeugt das Preview-Profil eine installierbare APK.
+Der Release-Build verwendet das lokal installierte Android-SDK. Das Skript erkennt `ANDROID_HOME`, `ANDROID_SDK_ROOT` oder `%LOCALAPPDATA%\Android\Sdk` und erstellt `../release/tempbox-release.apk`.
 
 ```powershell
-npm install --global eas-cli
-eas login
-eas build --platform android --profile preview
+npm run apk:release
 ```
 
 Für einen lokalen Debug-Build mit installiertem Android Studio kannst du alternativ ausführen:

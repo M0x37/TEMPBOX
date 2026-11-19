@@ -11,9 +11,9 @@ ESP32-C3 firmware for the TEMPBOX temperature station.
    - Adafruit AHTX0
    - Adafruit BMP280 Library
    - Adafruit Unified Sensor
-3. Open `CODE/CODE.ino` and edit the WiFi and MQTT settings at the top of the sketch.
-4. Set `WIFI_SSID` and `WIFI_PASSWORD` to your local network values.
-5. If you want Home Assistant to discover the device automatically, set `MQTT_BROKER`, `MQTT_PORT`, and the MQTT credentials in the same file.
+3. Copy `CODE/config.example.h` to `CODE/config.h`, then set the WiFi and optional MQTT settings in `config.h`.
+4. Set `TEMPBOX_WIFI_SSID` and `TEMPBOX_WIFI_PASSWORD` to your local network values.
+5. If you want Home Assistant to discover the device automatically, set `TEMPBOX_MQTT_BROKER`, `TEMPBOX_MQTT_PORT`, and the MQTT credentials in `config.h`.
 6. Upload this single file to the ESP32-C3. No `config.h` file is required.
 
 > Important: Upload the revised sketch after this update. The new `WebServer` implementation replaces the hand-written socket handling and avoids periodic WiFi scans that can close an active browser request without a response.
