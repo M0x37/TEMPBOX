@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FlatList,
-  Image,
   Platform,
   Pressable,
   SafeAreaView,
@@ -26,16 +25,8 @@ import {
 } from "./src/storage";
 
 const COLORS = {
-  canvas: "#0C121C",
-  surface: "#141E2B",
-  surfaceRaised: "#1A2635",
-  line: "#273445",
-  ink: "#F4F7F9",
-  muted: "#98A6B5",
-  accent: "#65D6B7",
-  accentSoft: "#1E3A37",
-  warning: "#F2BC68",
-  danger: "#EB7181",
+  background: "#0A0A0A",
+  foreground: "#F5F5F5",
 };
 
 type Tab = "live" | "history" | "settings";
@@ -57,26 +48,7 @@ function formatDate(iso: string) {
   return new Intl.DateTimeFormat("de-DE", {
     day: "2-digit",
     month: "2-digit",
-    year: "2-digit",
   }).format(new Date(iso));
-}
-
-function Icon({
-  source,
-  size = 22,
-  color = COLORS.muted,
-}: {
-  source: number;
-  size?: number;
-  color?: string;
-}) {
-  return (
-    <Image
-      source={source}
-      resizeMode="contain"
-      style={{ width: size, height: size, tintColor: color }}
-    />
-  );
 }
 
 export default function App() {
@@ -87,10 +59,11 @@ export default function App() {
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [settings, setSettings] = useState<DeviceSettings>(defaultSettings);
   const [endpointDraft, setEndpointDraft] = useState(defaultSettings.endpoint);
-  const [intervalDraft, setIntervalDraft] = useState(String(defaultSettings.refreshIntervalSec));
+  const [intervalDraft, setIntervalDraft] = useState(
+    String(defaultSettings.refreshIntervalSec),
+  );
   const [settingsError, setSettingsError] = useState<string | null>(null);
-  const cached = useRef<SensorData | null>(null);
-  const cachedTime = useRef<string | null>(null);
+  const [settingsSaved, setSettingsSaved] = useState(false);
   const requestInFlight = useRef(false);
   const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -101,17 +74,11 @@ export default function App() {
     try {
       const nextData = await fetchSensorData(settings.endpoint);
       const now = new Date().toISOString();
-      cached.current = nextData;
-      cachedTime.current = now;
       setData(nextData);
       setLastUpdated(now);
       setStatus("online");
       void appendHistory(nextData, now);
     } catch {
-      if (cached.current) {
-        setData(cached.current);
-        setLastUpdated(cachedTime.current);
-      }
       setStatus("offline");
     } finally {
       requestInFlight.current = false;
@@ -132,7 +99,10 @@ export default function App() {
     async function poll() {
       await refreshData();
       if (active) {
-        pollTimer.current = setTimeout(poll, settings.refreshIntervalSec * 1_000);
+        pollTimer.current = setTimeout(
+          poll,
+          settings.refreshIntervalSec * 1_000,
+        );
       }
     }
 
@@ -143,31 +113,39 @@ export default function App() {
     };
   }, [refreshData, settings.refreshIntervalSec]);
 
-  async function openHistory() {
-    setHistory((await loadHistory()).reverse());
-  }
-
   useEffect(() => {
-    if (tab === "history") void openHistory();
+    if (tab === "history") {
+      void loadHistory().then((entries) => setHistory(entries.reverse()));
+    }
   }, [tab]);
 
   async function saveCurrentSettings() {
+    setSettingsSaved(false);
     try {
       const endpoint = normalizeEndpoint(endpointDraft);
       const refreshIntervalSec = Number(intervalDraft);
-      if (!Number.isInteger(refreshIntervalSec) || refreshIntervalSec < 2 || refreshIntervalSec > 60) {
-        throw new Error("Das Aktualisierungsintervall muss zwischen 2 und 60 Sekunden liegen.");
+      if (
+        !Number.isInteger(refreshIntervalSec) ||
+        refreshIntervalSec < 2 ||
+        refreshIntervalSec > 60
+      ) {
+        throw new Error(
+          "Das Intervall muss zwischen 2 und 60 Sekunden liegen.",
+        );
       }
 
       const next = { endpoint, refreshIntervalSec };
       await saveSettings(next);
       setSettings(next);
       setSettingsError(null);
-      cached.current = null;
-      cachedTime.current = null;
       setStatus("connecting");
+      setSettingsSaved(true);
     } catch (error) {
-      setSettingsError(error instanceof Error ? error.message : "Die Einstellungen konnten nicht gespeichert werden.");
+      setSettingsError(
+        error instanceof Error
+          ? error.message
+          : "Die Einstellungen konnten nicht gespeichert werden.",
+      );
     }
   }
 
@@ -177,81 +155,110 @@ export default function App() {
   }
 
   const statusText =
-    status === "online" ? "Verbunden" : status === "connecting" ? "Verbinde" : "Nicht erreichbar";
+    status === "online"
+      ? "Verbunden"
+      : status === "connecting"
+        ? "Verbinde"
+        : "Nicht erreichbar";
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="light" />
       <View style={styles.app}>
         {tab === "live" ? (
-          <ScrollView contentContainerStyle={styles.liveContent} showsVerticalScrollIndicator={false}>
+          <ScrollView
+            contentContainerStyle={styles.screen}
+            showsVerticalScrollIndicator={false}
+          >
             <View style={styles.header}>
-              <View>
-                <Text style={styles.eyebrow}>TEMPBOX</Text>
-                <Text style={styles.screenTitle}>Raumklima</Text>
-              </View>
-              <View style={[styles.statusPill, status === "offline" && styles.statusPillOffline]}>
-                <View style={[styles.statusDot, status === "online" && styles.statusDotOnline]} />
-                <Text style={styles.statusText}>{statusText}</Text>
-              </View>
-            </View>
-
-            <View style={styles.heroCard}>
-              <View style={styles.heroIcon}>
-                <Icon source={require("./assets/icons/thermometer.png")} size={30} color={COLORS.accent} />
-              </View>
-              <Text style={styles.heroLabel}>TEMPERATUR</Text>
-              <View style={styles.heroReading}>
-                <Text style={styles.heroValue}>{formatNumber(data?.temp, 1)}</Text>
-                <Text style={styles.heroUnit}>°C</Text>
-              </View>
-              <Text style={styles.heroMeta}>
-                {lastUpdated ? `${status === "offline" ? "Letzte Messung" : "Aktualisiert"} · ${formatTime(lastUpdated)}` : "Warte auf Messung"}
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel="Messwerte aktualisieren"
-                onPress={() => void refreshData()}
-                style={({ pressed }) => [styles.refreshButton, pressed && styles.pressed]}
+              <Text style={styles.title}>TEMPBOX</Text>
+              <Text
+                accessibilityLiveRegion="polite"
+                style={styles.status}
               >
-                <Text style={styles.refreshLabel}>JETZT AKTUALISIEREN</Text>
-              </Pressable>
+                {statusText}
+              </Text>
             </View>
 
-            <View style={styles.metricGrid}>
-              <View style={styles.metricCard}>
-                <View style={styles.metricIcon}>
-                  <Icon source={require("./assets/icons/humidity.png")} size={22} color="#7CB8FF" />
-                </View>
-                <Text style={styles.metricLabel}>LUFTFEUCHTE</Text>
-                <Text style={styles.metricValue}>{formatNumber(data?.humidity, 0)}<Text style={styles.metricUnit}> %</Text></Text>
+            <View style={styles.reading}>
+              <Text style={styles.readingLabel}>Temperatur</Text>
+              <View style={styles.temperatureRow}>
+                <Text style={styles.temperature}>
+                  {formatNumber(data?.temp, 1)}
+                </Text>
+                <Text style={styles.unit}>°C</Text>
               </View>
-              <View style={styles.metricCard}>
-                <View style={styles.metricIcon}>
-                  <Icon source={require("./assets/icons/pressure.png")} size={22} color={COLORS.warning} />
-                </View>
-                <Text style={styles.metricLabel}>LUFTDRUCK</Text>
-                <Text style={styles.metricValue}>{formatNumber(data?.pressure, 0)}<Text style={styles.metricUnit}> hPa</Text></Text>
+              <Text style={styles.updated}>
+                {lastUpdated
+                  ? `${status === "offline" ? "Letzte Messung" : "Aktualisiert"} ${formatTime(lastUpdated)}`
+                  : "Warte auf Messung"}
+              </Text>
+            </View>
+
+            {status === "offline" ? (
+              <View style={styles.errorMessage}>
+                <Text style={styles.errorTitle}>Gerät nicht erreichbar</Text>
+                <Text style={styles.errorText}>
+                  Prüfe Adresse und WLAN-Verbindung.
+                </Text>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Verbindung erneut prüfen"
+                  onPress={() => void refreshData()}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <Text style={styles.secondaryButtonText}>Erneut prüfen</Text>
+                </Pressable>
+              </View>
+            ) : null}
+
+            <View style={styles.measurements}>
+              <View style={styles.measurement}>
+                <Text style={styles.measurementLabel}>Luftfeuchte</Text>
+                <Text style={styles.measurementValue}>
+                  {formatNumber(data?.humidity, 0)}%
+                </Text>
+              </View>
+              <View style={[styles.measurement, styles.measurementLast]}>
+                <Text style={styles.measurementLabel}>Luftdruck</Text>
+                <Text style={styles.measurementValue}>
+                  {formatNumber(data?.pressure, 0)} hPa
+                </Text>
               </View>
             </View>
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Messwerte aktualisieren"
+              onPress={() => void refreshData()}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.primaryButtonText}>Aktualisieren</Text>
+            </Pressable>
           </ScrollView>
         ) : null}
 
         {tab === "history" ? (
-          <View style={styles.tabContent}>
+          <View style={styles.screen}>
             <View style={styles.header}>
-              <View>
-                <Text style={styles.eyebrow}>MESSDATEN</Text>
-                <Text style={styles.screenTitle}>Verlauf</Text>
-              </View>
+              <Text style={styles.title}>Verlauf</Text>
               {history.length ? (
                 <Pressable
                   accessibilityRole="button"
                   accessibilityLabel="Verlauf löschen"
                   onPress={() => void removeHistory()}
-                  style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+                  style={({ pressed }) => [
+                    styles.textButton,
+                    pressed && styles.pressed,
+                  ]}
                 >
-                  <Icon source={require("./assets/icons/trash.png")} size={20} color={COLORS.danger} />
+                  <Text style={styles.textButtonText}>Löschen</Text>
                 </Pressable>
               ) : null}
             </View>
@@ -259,23 +266,47 @@ export default function App() {
             <FlatList
               data={history}
               keyExtractor={(entry) => entry.id}
-              contentContainerStyle={history.length ? styles.historyList : styles.historyEmpty}
+              contentContainerStyle={
+                history.length ? styles.historyList : styles.historyEmpty
+              }
               ListEmptyComponent={
                 <View style={styles.emptyState}>
-                  <Icon source={require("./assets/icons/history.png")} size={38} color={COLORS.muted} />
                   <Text style={styles.emptyTitle}>Noch keine Messwerte</Text>
-                  <Text style={styles.emptyText}>Neue Messungen erscheinen hier automatisch.</Text>
+                  <Text style={styles.emptyText}>
+                    Öffne die Live-Ansicht und aktualisiere die Messung.
+                  </Text>
+                  <Pressable
+                    accessibilityRole="button"
+                    onPress={() => setTab("live")}
+                    style={({ pressed }) => [
+                      styles.secondaryButton,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text style={styles.secondaryButtonText}>
+                      Zur Live-Ansicht
+                    </Text>
+                  </Pressable>
                 </View>
               }
               renderItem={({ item }) => (
                 <View style={styles.historyRow}>
                   <View>
-                    <Text style={styles.historyTemp}>{formatNumber(item.temp, 1)}°C</Text>
-                    <Text style={styles.historySub}>{formatNumber(item.humidity, 0)}% · {formatNumber(item.pressure, 0)} hPa</Text>
+                    <Text style={styles.historyTemperature}>
+                      {formatNumber(item.temp, 1)}°C
+                    </Text>
+                    <Text style={styles.historyDetails}>
+                      {formatNumber(item.humidity, 0)}% ·{" "}
+                      {formatNumber(item.pressure, 0)} hPa
+                    </Text>
                   </View>
                   <View style={styles.historyTimeBlock}>
-                    <Text style={styles.historyTime}>{formatTime(item.recordedAt)}</Text>
-                    <Text style={styles.historyDate}>{formatDate(item.recordedAt)}</Text>
+                    <Text style={styles.historyTime}>
+                      {formatTime(item.recordedAt)}
+                    </Text>
+                    <Text style={styles.historyDate}>
+                      {formatDate(item.recordedAt)}
+                    </Text>
                   </View>
                 </View>
               )}
@@ -284,52 +315,70 @@ export default function App() {
         ) : null}
 
         {tab === "settings" ? (
-          <ScrollView contentContainerStyle={styles.tabContent} keyboardShouldPersistTaps="handled">
+          <ScrollView
+            contentContainerStyle={styles.screen}
+            keyboardShouldPersistTaps="handled"
+          >
             <View style={styles.header}>
-              <View>
-                <Text style={styles.eyebrow}>VERBINDUNG</Text>
-                <Text style={styles.screenTitle}>Einstellungen</Text>
-              </View>
-              <View style={styles.headerIcon}>
-                <Icon source={require("./assets/icons/settings.png")} size={24} color={COLORS.accent} />
-              </View>
+              <Text style={styles.title}>Einstellungen</Text>
             </View>
 
-            <View style={styles.settingsCard}>
-              <Text style={styles.fieldLabel}>GERÄTEADRESSE</Text>
+            <View style={styles.form}>
+              <Text nativeID="endpoint-label" style={styles.fieldLabel}>
+                Geräteadresse
+              </Text>
               <TextInput
                 value={endpointDraft}
-                onChangeText={setEndpointDraft}
+                onChangeText={(value) => {
+                  setEndpointDraft(value);
+                  setSettingsSaved(false);
+                }}
+                accessibilityLabel="Geräteadresse"
+                accessibilityLabelledBy="endpoint-label"
                 autoCapitalize="none"
                 autoCorrect={false}
                 keyboardType="url"
                 placeholder="http://192.168.178.100/"
-                placeholderTextColor={COLORS.muted}
+                placeholderTextColor="#F5F5F5"
                 style={styles.textInput}
-                accessibilityLabel="ESP32 Geräteadresse"
               />
 
-              <Text style={styles.fieldLabel}>AKTUALISIERUNG</Text>
-              <View style={styles.intervalRow}>
-                <TextInput
-                  value={intervalDraft}
-                  onChangeText={setIntervalDraft}
-                  keyboardType="number-pad"
-                  style={[styles.textInput, styles.intervalInput]}
-                  accessibilityLabel="Aktualisierungsintervall"
-                />
-                <Text style={styles.intervalUnit}>Sekunden</Text>
-              </View>
+              <Text nativeID="interval-label" style={styles.fieldLabel}>
+                Aktualisierung in Sekunden
+              </Text>
+              <TextInput
+                value={intervalDraft}
+                onChangeText={(value) => {
+                  setIntervalDraft(value);
+                  setSettingsSaved(false);
+                }}
+                accessibilityLabel="Aktualisierungsintervall"
+                accessibilityLabelledBy="interval-label"
+                keyboardType="number-pad"
+                style={styles.textInput}
+              />
 
-              {settingsError ? <Text style={styles.errorText}>{settingsError}</Text> : null}
+              {settingsError ? (
+                <Text accessibilityLiveRegion="polite" style={styles.errorText}>
+                  {settingsError}
+                </Text>
+              ) : null}
+              {settingsSaved ? (
+                <Text accessibilityLiveRegion="polite" style={styles.savedText}>
+                  Gespeichert
+                </Text>
+              ) : null}
 
               <Pressable
                 accessibilityRole="button"
                 accessibilityLabel="Einstellungen speichern"
                 onPress={() => void saveCurrentSettings()}
-                style={({ pressed }) => [styles.saveButton, pressed && styles.pressed]}
+                style={({ pressed }) => [
+                  styles.primaryButton,
+                  pressed && styles.pressed,
+                ]}
               >
-                <Text style={styles.saveLabel}>SPEICHERN</Text>
+                <Text style={styles.primaryButtonText}>Speichern</Text>
               </Pressable>
             </View>
           </ScrollView>
@@ -337,17 +386,11 @@ export default function App() {
 
         <View style={styles.bottomNav}>
           {([
-            ["live", "Live", "thermometer"],
-            ["history", "Verlauf", "history"],
-            ["settings", "Einstellungen", "settings"],
-          ] as const).map(([value, label, icon]) => {
+            ["live", "Live"],
+            ["history", "Verlauf"],
+            ["settings", "Einstellungen"],
+          ] as const).map(([value, label]) => {
             const active = tab === value;
-            const source =
-              icon === "thermometer"
-                ? require("./assets/icons/thermometer.png")
-                : icon === "history"
-                  ? require("./assets/icons/history.png")
-                  : require("./assets/icons/settings.png");
             return (
               <Pressable
                 key={value}
@@ -355,10 +398,16 @@ export default function App() {
                 accessibilityLabel={label}
                 accessibilityState={{ selected: active }}
                 onPress={() => setTab(value)}
-                style={styles.navItem}
+                style={[styles.navItem, active && styles.navItemActive]}
               >
-                <Icon source={source} size={21} color={active ? COLORS.accent : COLORS.muted} />
-                <Text style={[styles.navLabel, active && styles.navLabelActive]}>{label}</Text>
+                <Text
+                  style={[
+                    styles.navLabel,
+                    active && styles.navLabelActive,
+                  ]}
+                >
+                  {label}
+                </Text>
               </Pressable>
             );
           })}
@@ -369,166 +418,256 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: COLORS.canvas },
-  app: { flex: 1, backgroundColor: COLORS.canvas },
-  liveContent: { flexGrow: 1, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 28 },
-  tabContent: { flex: 1, paddingHorizontal: 20, paddingTop: 18, paddingBottom: 16 },
+  safeArea: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  app: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  screen: {
+    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 18,
+    paddingBottom: 24,
+  },
   header: {
-    minHeight: 58,
+    minHeight: 44,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginBottom: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F5F5F533",
+    paddingBottom: 12,
   },
-  eyebrow: { color: COLORS.accent, fontSize: 11, fontWeight: "800", letterSpacing: 1.8, marginBottom: 3 },
-  screenTitle: { color: COLORS.ink, fontSize: 28, lineHeight: 34, fontWeight: "700", letterSpacing: -0.7 },
-  statusPill: {
+  title: {
+    color: COLORS.foreground,
+    fontSize: 18,
+    lineHeight: 24,
+    fontWeight: "700",
+  },
+  status: {
+    color: COLORS.foreground,
+    fontSize: 13,
+  },
+  reading: {
+    alignItems: "center",
+    paddingVertical: 48,
+  },
+  readingLabel: {
+    color: COLORS.foreground,
+    fontSize: 13,
+    opacity: 0.65,
+  },
+  temperatureRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginTop: 4,
+  },
+  temperature: {
+    color: COLORS.foreground,
+    fontSize: 104,
+    lineHeight: 112,
+    fontWeight: "300",
+    letterSpacing: -6,
+    fontVariant: ["tabular-nums"],
+  },
+  unit: {
+    color: COLORS.foreground,
+    fontSize: 32,
+    lineHeight: 42,
+    marginTop: 18,
+  },
+  updated: {
+    color: COLORS.foreground,
+    fontSize: 13,
+    opacity: 0.65,
+  },
+  measurements: {
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "#F5F5F533",
+  },
+  measurement: {
+    minHeight: 76,
+    justifyContent: "center",
+  },
+  measurementLast: {
+    borderTopWidth: 1,
+    borderTopColor: "#F5F5F533",
+  },
+  measurementLabel: {
+    color: COLORS.foreground,
+    fontSize: 12,
+    opacity: 0.65,
+  },
+  measurementValue: {
+    color: COLORS.foreground,
+    fontSize: 26,
+    lineHeight: 32,
+    fontWeight: "500",
+    marginTop: 2,
+  },
+  primaryButton: {
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: COLORS.foreground,
+    borderRadius: 6,
+    marginTop: 20,
+  },
+  primaryButtonText: {
+    color: COLORS.background,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  secondaryButton: {
+    minHeight: 48,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: COLORS.foreground,
+    borderRadius: 6,
+    marginTop: 16,
+    paddingHorizontal: 20,
+  },
+  secondaryButtonText: {
+    color: COLORS.foreground,
+    fontSize: 15,
+    fontWeight: "700",
+  },
+  textButton: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "flex-end",
+    justifyContent: "center",
+  },
+  textButtonText: {
+    color: COLORS.foreground,
+    fontSize: 13,
+  },
+  errorMessage: {
+    borderBottomWidth: 1,
+    borderBottomColor: "#F5F5F533",
+    paddingBottom: 20,
+  },
+  errorTitle: {
+    color: COLORS.foreground,
+    fontSize: 16,
+    fontWeight: "700",
+  },
+  errorText: {
+    color: COLORS.foreground,
+    fontSize: 13,
+    opacity: 0.65,
+  },
+  historyList: {
+    paddingTop: 8,
+    paddingBottom: 24,
+  },
+  historyEmpty: {
+    flexGrow: 1,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  emptyTitle: {
+    color: COLORS.foreground,
+    fontSize: 18,
+    fontWeight: "700",
+  },
+  emptyText: {
+    color: COLORS.foreground,
+    fontSize: 13,
+    lineHeight: 20,
+    opacity: 0.65,
+    textAlign: "center",
+    marginTop: 6,
+  },
+  historyRow: {
+    minHeight: 72,
     flexDirection: "row",
     alignItems: "center",
-    gap: 7,
-    borderRadius: 999,
-    borderWidth: 1,
-    borderColor: "#2D4A43",
-    backgroundColor: COLORS.accentSoft,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    justifyContent: "space-between",
+    borderBottomWidth: 1,
+    borderBottomColor: "#F5F5F533",
   },
-  statusPillOffline: { borderColor: "#514138", backgroundColor: "#31251F" },
-  statusDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: COLORS.danger },
-  statusDotOnline: { backgroundColor: COLORS.accent },
-  statusText: { color: COLORS.muted, fontSize: 11, fontWeight: "700" },
-  heroCard: {
-    alignItems: "center",
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    backgroundColor: COLORS.surface,
-    paddingHorizontal: 18,
+  historyTemperature: {
+    color: COLORS.foreground,
+    fontSize: 20,
+    fontWeight: "600",
+  },
+  historyDetails: {
+    color: COLORS.foreground,
+    fontSize: 12,
+    opacity: 0.65,
+    marginTop: 3,
+  },
+  historyTimeBlock: {
+    alignItems: "flex-end",
+  },
+  historyTime: {
+    color: COLORS.foreground,
+    fontSize: 13,
+  },
+  historyDate: {
+    color: COLORS.foreground,
+    fontSize: 12,
+    opacity: 0.65,
+    marginTop: 3,
+  },
+  form: {
     paddingTop: 28,
-    paddingBottom: 18,
   },
-  heroIcon: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.accentSoft,
-    marginBottom: 12,
+  fieldLabel: {
+    color: COLORS.foreground,
+    fontSize: 13,
+    marginBottom: 8,
   },
-  heroLabel: { color: COLORS.muted, fontSize: 11, fontWeight: "800", letterSpacing: 1.5 },
-  heroReading: { flexDirection: "row", alignItems: "flex-start", marginTop: 5 },
-  heroValue: { color: COLORS.ink, fontSize: 86, lineHeight: 92, fontWeight: "300", letterSpacing: -5 },
-  heroUnit: { color: COLORS.accent, fontSize: 28, lineHeight: 36, fontWeight: "600", marginTop: 13, marginLeft: 5 },
-  heroMeta: { color: COLORS.muted, fontSize: 12, marginTop: 2, fontVariant: ["tabular-nums"] },
-  refreshButton: {
+  textInput: {
     width: "100%",
-    alignItems: "center",
-    borderRadius: 12,
-    backgroundColor: "#233C38",
-    marginTop: 22,
-    paddingVertical: 13,
-  },
-  refreshLabel: { color: COLORS.accent, fontSize: 12, fontWeight: "800", letterSpacing: 1 },
-  metricGrid: { flexDirection: "row", gap: 12, marginTop: 12 },
-  metricCard: {
-    flex: 1,
-    minHeight: 128,
-    borderRadius: 18,
+    minHeight: 48,
+    color: COLORS.foreground,
     borderWidth: 1,
-    borderColor: COLORS.line,
-    backgroundColor: COLORS.surface,
-    padding: 14,
+    borderColor: "#F5F5F5",
+    borderRadius: 6,
+    backgroundColor: COLORS.background,
+    paddingHorizontal: 12,
+    marginBottom: 20,
   },
-  metricIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.surfaceRaised,
+  savedText: {
+    color: COLORS.foreground,
+    fontSize: 13,
   },
-  metricLabel: { color: COLORS.muted, fontSize: 9, fontWeight: "800", letterSpacing: 0.8, marginTop: 10 },
-  metricValue: { color: COLORS.ink, fontSize: 24, fontWeight: "600", marginTop: 3, fontVariant: ["tabular-nums"] },
-  metricUnit: { color: COLORS.muted, fontSize: 13, fontWeight: "500" },
   bottomNav: {
     height: Platform.select({ ios: 76, android: 68, default: 76 }),
     flexDirection: "row",
     borderTopWidth: 1,
-    borderTopColor: COLORS.line,
-    backgroundColor: "#101923",
-    paddingHorizontal: 8,
+    borderTopColor: "#F5F5F533",
   },
-  navItem: { flex: 1, alignItems: "center", justifyContent: "center", gap: 4 },
-  navLabel: { color: COLORS.muted, fontSize: 10, fontWeight: "700" },
-  navLabelActive: { color: COLORS.accent },
-  iconButton: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
+  navItem: {
+    flex: 1,
+    minHeight: 44,
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 1,
-    borderColor: COLORS.line,
   },
-  headerIcon: {
-    width: 42,
-    height: 42,
-    borderRadius: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: COLORS.accentSoft,
+  navItemActive: {
+    borderTopWidth: 2,
+    borderTopColor: COLORS.foreground,
   },
-  historyList: { paddingTop: 4, paddingBottom: 24 },
-  historyEmpty: { flexGrow: 1 },
-  emptyState: { flex: 1, alignItems: "center", justifyContent: "center" },
-  emptyTitle: { color: COLORS.ink, fontSize: 16, fontWeight: "700", marginTop: 12 },
-  emptyText: { color: COLORS.muted, fontSize: 13, marginTop: 5, textAlign: "center" },
-  historyRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    backgroundColor: COLORS.surface,
-    marginBottom: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+  navLabel: {
+    color: COLORS.foreground,
+    fontSize: 12,
+    opacity: 0.65,
   },
-  historyTemp: { color: COLORS.ink, fontSize: 21, fontWeight: "600", fontVariant: ["tabular-nums"] },
-  historySub: { color: COLORS.muted, fontSize: 12, marginTop: 3 },
-  historyTimeBlock: { alignItems: "flex-end" },
-  historyTime: { color: COLORS.accent, fontSize: 13, fontWeight: "700", fontVariant: ["tabular-nums"] },
-  historyDate: { color: COLORS.muted, fontSize: 11, marginTop: 3 },
-  settingsCard: {
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    backgroundColor: COLORS.surface,
-    padding: 16,
+  navLabelActive: {
+    opacity: 1,
+    fontWeight: "700",
   },
-  fieldLabel: { color: COLORS.muted, fontSize: 10, fontWeight: "800", letterSpacing: 1, marginBottom: 8 },
-  textInput: {
-    color: COLORS.ink,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: 12,
-    backgroundColor: "#101923",
-    paddingHorizontal: 13,
-    paddingVertical: 12,
-    marginBottom: 20,
+  pressed: {
+    opacity: 0.72,
   },
-  intervalRow: { flexDirection: "row", alignItems: "center", gap: 10 },
-  intervalInput: { width: 92, marginBottom: 20, textAlign: "center" },
-  intervalUnit: { color: COLORS.muted, fontSize: 13, marginBottom: 20 },
-  errorText: { color: COLORS.danger, fontSize: 12, marginBottom: 12 },
-  saveButton: {
-    alignItems: "center",
-    borderRadius: 12,
-    backgroundColor: COLORS.accent,
-    paddingVertical: 14,
-  },
-  saveLabel: { color: "#0C121C", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
-  pressed: { opacity: 0.72, transform: [{ scale: 0.985 }] },
 });

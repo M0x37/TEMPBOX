@@ -29,11 +29,13 @@ try {
 }
 
 $sourceApk = Join-Path $androidRoot "app\build\outputs\apk\release\app-release.apk"
-$destinationApk = Join-Path (Split-Path -Parent $projectRoot) "tempbox-release.apk"
+$releaseRoot = Join-Path (Split-Path -Parent $projectRoot) "release"
+$destinationApk = Join-Path $releaseRoot "tempbox-release.apk"
 
 if (-not (Test-Path $sourceApk)) {
   throw "Die erzeugte APK wurde nicht gefunden: $sourceApk"
 }
 
+New-Item -ItemType Directory -Force $releaseRoot | Out-Null
 Copy-Item -LiteralPath $sourceApk -Destination $destinationApk -Force
 Write-Host "APK erstellt: $destinationApk"
